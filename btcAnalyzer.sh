@@ -21,6 +21,21 @@ function ctrl_c(){
 	tput cnorm; exit 1
 }
 
+function dependencies(){
+	tput civis; counter=0
+	dependencies_array=(html2text bc)
+
+	echo; for program in "${dependencies_array[@]}"; do
+		if [ ! "$(command -v $program)" ]; then
+			echo -e "${redColour}[X]${endColour}${grayColour} $program${endColour}${yellowColour} no está instalado${endColour}"; sleep 1
+			echo -e "\n${yellowColour}[i]${endColour}${grayColour} Instalando...${endColour}"; sleep 1
+			apt install $program -y > /dev/null 2>&1
+			echo -e "\n${greenColour}[V]${endColour}${grayColour} $program${endColour}${yellowColour} instalado${endColour}\n"; sleep 2
+			let counter+=1
+		fi
+	done
+}
+
 function helpPanel(){
 	echo -e "\n${redColour}[!] Uso: ./btcAnalyzer${endColour}"
 	for i in $(seq 1 80); do echo -ne "${redColour}-"; done; echo -ne "${endColour}"
@@ -248,7 +263,9 @@ function inspectAddress(){
 	tput cnorm
 }
 
-parameter_counter=0; while getopts "e:n:i:a:h:" arg; do
+dependencies; parameter_counter=0
+
+while getopts "e:n:i:a:h:" arg; do
 	case $arg in
 		e) exploration_mode=$OPTARG; let parameter_counter+=1;;
 		n) number_output=$OPTARG; let parameter_counter+=1;;
