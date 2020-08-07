@@ -247,8 +247,10 @@ function inspectAddress(){
 
 	line_null=$(cat address.information | grep -n "^\$$" | awk '{print $1}' FS=":")
 
-	if [ $line_null ]; then
-		sed "${line_null}s/\$/0.00/" -i address.information
+	if [ "$(echo $line_null | grep -oP '\w')" ]; then
+		echo $line_null | tr ' ' '\n' | while read line; do
+			sed "${line}s/\$/0.00/" -i address.information
+		done
 	fi
 
 	cat address.information | xargs | tr ' ' '_' >> address.information2
