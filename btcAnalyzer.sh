@@ -217,7 +217,7 @@ function inspectTransaction(){
 	echo "Dirección (Salidas)_Valor" > salidas.tmp
 
 	while [ "$(cat salidas.tmp | wc -l)" == "1" ]; do
-		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Salidas" -A 500 | grep "Lo has pensado" -B 500 | grep "Dirección"  -A 3 | grep -v -E "Direcci´on|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> salidas.tmp
+		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Salidas" -A 500 | grep "Lo has pensado" -B 500 | grep "Dirección"  -A 3 | grep -v -E "Dirección|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> salidas.tmp
 	done
 
 	echo -ne "${greenColour}"
