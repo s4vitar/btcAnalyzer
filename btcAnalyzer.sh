@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Author: Marcelo Vázquez (aka S4vitar)
+# Modifications to PyBlock (pip3 install pybitblock)
 
 #Colours
 greenColour="\e[0;32m\033[1m"
@@ -41,11 +42,11 @@ function helpPanel(){
 	for i in $(seq 1 80); do echo -ne "${redColour}-"; done; echo -ne "${endColour}"
 	echo -e "\n\n\t${grayColour}[-e]${endColour}${yellowColour} Modo exploración${endColour}"
 	echo -e "\t\t${purpleColour}unconfirmed_transactions${endColour}${yellowColour}:\t Listar transacciones no confirmadas${endColour}"
-	echo -e "\t\t${purpleColour}inspect${endColour}${yellowColour}:\t\t\t Inspeccionar un hash de transacción${endColour}"
-	echo -e "\t\t${purpleColour}address${endColour}${yellowColour}:\t\t\t Inspeccionar una transacción de dirección${endColour}"
+	echo -e "\t\t${purpleColour}inspect${endColour}${yellowColour}:\t\t\t Inspeccionar un hash${endColour}"
+	echo -e "\t\t${purpleColour}address${endColour}${yellowColour}:\t\t\t Inspeccionar una dirección${endColour}"
 	echo -e "\n\t${grayColour}[-n]${endColour}${yellowColour} Limitar el número de resultados${endColour}${blueColour} (Ejemplo: -n 10)${endColour}"
-	echo -e "\n\t${grayColour}[-i]${endColour}${yellowColour} Proporcionar el identificador de transacción${endColour}${blueColour} (Ejemplo: -i ba76ab9876b98ad5b98ad5b9a8db5ad98b5ad98b5a9d)${endColour}"
-	echo -e "\n\t${grayColour}[-a]${endColour}${yellowColour} Proporcionar una dirección de transacción${endColour}${blueColour} (Ejemplo: -a bad876fa876A876f8d6a861b9a8bd9a)${endColour}"
+	echo -e "\n\t${grayColour}[-i]${endColour}${yellowColour} Proporcionar el hash de transacción${endColour}${blueColour} (Ejemplo: -i 000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f)${endColour}"
+	echo -e "\n\t${grayColour}[-a]${endColour}${yellowColour} Proporcionar la dirección de transacción${endColour}${blueColour} (Ejemplo: -a 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa)${endColour}"
 	echo -e "\n\t${grayColour}[-h]${endColour}${yellowColour} Mostrar este panel de ayuda${endColour}\n"
 
 	tput cnorm; exit 1
@@ -205,7 +206,7 @@ function inspectTransaction(){
 	echo "Dirección (Entradas)_Valor" > entradas.tmp
 
 	while [ "$(cat entradas.tmp | wc -l)" == "1" ]; do
-		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Entradas" -A 500 | grep "Salidas" -B 500 | grep "Direcci"  -A 3 | grep -v -E "Direcci|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> entradas.tmp
+		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Entradas" -A 500 | grep "Salidas" -B 500 | grep "Dirección"  -A 3 | grep -v -E "Dirección|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> entradas.tmp
 	done
 
 	echo -ne "${greenColour}"
@@ -216,7 +217,7 @@ function inspectTransaction(){
 	echo "Dirección (Salidas)_Valor" > salidas.tmp
 
 	while [ "$(cat salidas.tmp | wc -l)" == "1" ]; do
-		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Salidas" -A 500 | grep "Lo has pensado" -B 500 | grep "Direcci"  -A 3 | grep -v -E "Direcci|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> salidas.tmp
+		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Salidas" -A 500 | grep "Lo has pensado" -B 500 | grep "Dirección"  -A 3 | grep -v -E "Direcci´on|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> salidas.tmp
 	done
 
 	echo -ne "${greenColour}"
