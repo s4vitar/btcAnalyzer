@@ -159,11 +159,10 @@ function unconfirmedTransactions(){
 	echo "Hash_Cantidad_Bitcoin_Tiempo" > ut.table
 
 	for hash in $hashes; do
-		echo "${hash}_$(cat ut.tmp | grep "$hash" -A 6 | tail -n 1)_$(cat ut.tmp | grep "$hash" -A 4 | tail -n 1)_$(cat ut.tmp | grep "$hash" -A 2 | tail -n 1)" >> ut.table
+		echo "${hash}_$(cat ut.tmp | grep "$hash" -A 6 | tail -n 1 | sed -e 's/Â / /g')_$(cat ut.tmp | grep "$hash" -A 4 | tail -n 1)_$(cat ut.tmp | grep "$hash" -A 2 | tail -n 1)" >> ut.table
 	done
 
-	cat ut.table | tr '_' ' ' | awk '{print $2}' | grep -v "Cantidad" | tr -d '$' | sed 's/\..*//g' | tr -d ',' > money
-
+	cat ut.table | tr '_' ' ' | awk '{print $2}' | grep -v "Cantidad" | tr -d '$' | sed 's/\.*//g' | tr -d ',' | grep -Eo '[0-9,.]*' > money
 	money=0; cat money | while read money_in_line; do
 		let money+=$money_in_line
 		echo $money > money.tmp
@@ -195,7 +194,7 @@ function inspectTransaction(){
 	echo "Entrada Total_Salida Total" > total_entrada_salida.tmp
 
 	while [ "$(cat total_entrada_salida.tmp | wc -l)" == "1" ]; do
-		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep -E "Entrada total|Salida total" -A 1  | grep -v -E "Entrada total|Salida total" | xargs | tr ' ' '_' | sed 's/_BTC/ BTC/g' >> total_entrada_salida.tmp
+		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text -ascii | grep -E "Entrada|Gastos|Input|Output" -A 1 | grep BTC  | grep -v -E "Entradas totales|Salida total|Total Input|Total Output" | xargs | tr ' ' '_' | sed 's/_BTC/ BTC/g' >> total_entrada_salida.tmp
 	done
 
 	echo -ne "${grayColour}"
@@ -206,7 +205,7 @@ function inspectTransaction(){
 	echo "Dirección (Entradas)_Valor" > entradas.tmp
 
 	while [ "$(cat entradas.tmp | wc -l)" == "1" ]; do
-		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Entradas" -A 500 | grep "Salidas" -B 500 | grep "Dirección"  -A 3 | grep -v -E "Dirección|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> entradas.tmp
+		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text -ascii | grep "Entrada" -A 500 | grep -E "Gasto|Salida" -B 500 | grep "Direcc"  -A 3 | grep -v -E "Direcc|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> entradas.tmp
 	done
 
 	echo -ne "${greenColour}"
@@ -217,7 +216,7 @@ function inspectTransaction(){
 	echo "Dirección (Salidas)_Valor" > salidas.tmp
 
 	while [ "$(cat salidas.tmp | wc -l)" == "1" ]; do
-		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Salidas" -A 500 | grep "Lo has pensado" -B 500 | grep "Dirección"  -A 3 | grep -v -E "Dirección|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> salidas.tmp
+		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text -ascii | grep "Gastos" -A 500 | grep "lo has pensado" -B 500 | grep "Dirección"  -A 3 | grep -v -E "Dirección|Valor|\--" | awk 'NR%2{printf "%s ",$0;next;}1' | awk '{print $1 "_" $2 " " $3}' >> salidas.tmp
 	done
 
 	echo -ne "${greenColour}"
@@ -230,17 +229,17 @@ function inspectTransaction(){
 function inspectAddress(){
 	address_hash=$1
 	echo "Transacciones realizadas_Cantidad total recibida (BTC)_Cantidad total enviada (BTC)_Saldo total en la cuenta (BTC)" > address.information
-	curl -s "${inspect_address_url}${address_hash}" | html2text | grep -E "Transacciones|Total Recibidas|Cantidad total enviada|Saldo final" -A 1 | head -n -2 | grep -v -E "Transacciones|Total Recibidas|Cantidad total enviada|Saldo final" | xargs | tr ' ' '_' | sed 's/_BTC/ BTC/g' >> address.information
+	curl -s "${inspect_address_url}${address_hash}" | html2text -ascii| grep -E "Transacciones|Total recibido|Total enviado|Saldo final" -A 1 | head -n -2 | grep -v -Ei "Transacciones|Total Recibid[a,o]|Total enviad[o,a]|Saldo final" | xargs | tr ' ' '_' | sed 's/_BTC/ BTC/g' >> address.information
 
 	echo -ne "${grayColour}"
 	printTable '_' "$(cat address.information)"
 	echo -ne "${endColour}"
 	rm address.information 2>/dev/null
 
-	bitcoin_value=$(curl -s "https://cointelegraph.com/bitcoin-price-index" | html2text | grep "Last Price" | head -n 1 | awk 'NF{print $NF}' | tr -d ',')
+	bitcoin_value=$(curl -s "https://cointelegraph.com/bitcoin-price" | html2text -ascii | grep "Last Price" | head -n 1 | awk 'NF{print $NF}' | tr -d ',' | sed -e "s/\\$//g")
 
 	curl -s "${inspect_address_url}${address_hash}" | html2text | grep "Transacciones" -A 1 | head -n -2 | grep -v -E "Transacciones|\--" > address.information
-	curl -s "${inspect_address_url}${address_hash}" | html2text | grep -E "Total Recibidas|Cantidad total enviada|Saldo final" -A 1 | grep -v -E "Total Recibidas|Cantidad total enviada|Saldo final|\--" > bitcoin_to_dollars
+	curl -s "${inspect_address_url}${address_hash}" | html2text | grep -Ei "Total Recibido|Total enviado|Saldo final" -A 1 | grep -v -Ei "Total Recibido|Cantidad total enviad[a,o]|Total enviad[a,o]|Saldo final|\--" > bitcoin_to_dollars
 
 	cat bitcoin_to_dollars | while read value; do
 		echo "\$$(printf "%'.d\n" $(echo "$(echo $value | awk '{print $1}')*$bitcoin_value" | bc) 2>/dev/null)" >> address.information
@@ -296,3 +295,4 @@ else
 		inspectAddress $inspect_address
 	fi
 fi
+
