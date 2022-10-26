@@ -18,7 +18,7 @@ trap ctrl_c INT
 function ctrl_c(){
 	echo -e "\n${redColour}[!] Saliendo...\n${endColour}"
 
-	rm ut.t* money* total_entrada_salida.tmp entradas.tmp salidas.tmp bitcoin_to_dollars 2>/dev/null
+	rm ut.t* money* total_entrada_salida.tmp entradas.tmp salidas.tmp bitcoin_to_dollars transacciones.tmp 2>/dev/null
 	tput cnorm; exit 1
 }
 
@@ -44,10 +44,11 @@ function helpPanel(){
 	echo -e "\t\t${purpleColour}unconfirmed_transactions${endColour}${yellowColour}:\t Listar transacciones no confirmadas${endColour}"
 	echo -e "\t\t${purpleColour}inspect${endColour}${yellowColour}:\t\t\t Inspeccionar un hash${endColour}"
 	echo -e "\t\t${purpleColour}address${endColour}${yellowColour}:\t\t\t Inspeccionar una dirección${endColour}"
-	echo -e "\n\t${grayColour}[-n]${endColour}${yellowColour} Limitar el número de resultados${endColour}${blueColour} (Ejemplo: -n 10)${endColour}"
-	echo -e "\n\t${grayColour}[-i]${endColour}${yellowColour} Proporcionar el hash de transacción${endColour}${blueColour} (Ejemplo: -i 000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f)${endColour}"
-	echo -e "\n\t${grayColour}[-a]${endColour}${yellowColour} Proporcionar la dirección de transacción${endColour}${blueColour} (Ejemplo: -a 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa)${endColour}"
-	echo -e "\n\t${grayColour}[-h]${endColour}${yellowColour} Mostrar este panel de ayuda${endColour}\n"
+	echo -e "\n\t${grayColour}[-n]${endColour}${yellowColour} Limitar el número de resultados${endColour}${blueColour} \t\t\t\t(Ejemplo: -n 10)${endColour}"
+	echo -e "\n\t${grayColour}[-i]${endColour}${yellowColour} Proporcionar el hash de transacción${endColour}${blueColour} \t\t\t(Ejemplo: -i 000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f)${endColour}"
+	echo -e "\n\t${grayColour}[-a]${endColour}${yellowColour} Proporcionar la dirección de transacción${endColour}${blueColour} \t\t\t(Ejemplo: -a 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa)${endColour}"
+	echo -e "\n\t${grayColour}[-l]${endColour}${yellowColour} Mostrar últimas cinco transacciones de una dirección${endColour}${blueColour} \t(Ejemplo: -l 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa)${endColour}"
+    echo -e "\n\t${grayColour}[-h]${endColour}${yellowColour} Mostrar este panel de ayuda${endColour}\n"
 
 	tput cnorm; exit 1
 }
@@ -201,7 +202,7 @@ function inspectTransaction(){
 	echo -ne "${grayColour}"
 	printTable '_' "$(cat total_entrada_salida.tmp)"
 	echo -ne "${endColour}"
-	#rm total_entrada_salida.tmp 2>/dev/null
+	rm total_entrada_salida.tmp 2>/dev/null
 
 	echo "Dirección (Entradas)_Valor" > entradas.tmp
 
@@ -217,7 +218,7 @@ function inspectTransaction(){
 	echo "Dirección (Salidas)_Valor" > salidas.tmp
 
 	while [ "$(cat salidas.tmp | wc -l)" == "1" ]; do
-		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Gastos" -A 500 | grep "Ya lo has pensado" -B 500 | grep "Sin gastar" -A 8 | tr '()[]' ' ' | grep -v -E "Sin gastar|Dirección|Valor" | sed 's/ BTC/_BTC/g' | awk '{print $1}' | grep -v -E "\--" | xargs | sed 's/BTC /BTC\n/g' | tr '_' ' ' | tr ' ' '_' | sed 's/_BTC/ BTC/g' >> salidas.tmp
+		curl -s "${inspect_transaction_url}${inspect_transaction_hash}" | html2text | grep "Gastos$" -A 500 | grep "Ya lo has pensado" -B 500 | grep "Detalles" -A 10 | tr '()[]' ' ' | grep -v -E "Detalles|Gastada|Gasto|Gastos|Sin gastar|Dirección|Valor" 2>/dev/null | sed 's/ BTC/_BTC/g' | awk '{print $1}' | grep -v -E "\--" | xargs | sed 's/BTC /BTC\n/g' | tr '_' ' ' | tr ' ' '_' | sed 's/_BTC/ BTC/g' >> salidas.tmp
     done
 
 	echo -ne "${greenColour}"
@@ -256,7 +257,7 @@ function inspectAddress(){
 
 	cat address.information | xargs | tr ' ' '_' >> address.information2
 	rm address.information 2>/dev/null && mv address.information2 address.information
-	sed '1iTransacciones realizadas_Cantidad total recibida (USD)_Cantidad total enviada (USD)_ Saldo total en la cuenta (USD)' -i address.information
+	sed '1iTransacciones realizadas_Cantidad total recibida (USD)_Cantidad total enviada (USD)_Saldo total en la cuenta (USD)' -i address.information
 
 	echo -ne "${grayColour}"
 	printTable '_' "$(cat address.information)"
@@ -266,14 +267,30 @@ function inspectAddress(){
 	tput cnorm
 }
 
+function latestTransactions(){
+    address_hash=$1
+    echo "Importe realizado_Confirmaciones_Hash_Fecha" > transacciones.tmp
+
+    while [ "$(cat transacciones.tmp | wc -l)" == "1" ]; do
+        curl -s "${inspect_address_url}${address_hash}" | html2text | grep "Transacciones" -A 10000 | grep "Ya lo has pensado" -B 10000 | grep -E "Importe" -A 12 | grep -v -E "Importe|Hash|Fecha|De" 2>/dev/null | xargs | sed 's/-- /\n/g' | sed 's/[(][^)]*[)]/()/g' | sed 's/BTC /BTC_/g' | sed 's/_\[/_Desconocido_/g' 2>/dev/null | sed 's/ \[/_/g' | sed 's/\]() /_/g' >> transacciones.tmp
+    done
+
+    echo -ne "${grayColour}"
+    printTable '_' "$(cat transacciones.tmp)"
+    echo -ne "${endColour}"
+
+    tput cnorm
+}
+
 dependencies; parameter_counter=0
 
-while getopts "e:n:i:a:h:" arg; do
+while getopts "e:n:i:a:l:h:" arg; do
 	case $arg in
 		e) exploration_mode=$OPTARG; let parameter_counter+=1;;
 		n) number_output=$OPTARG; let parameter_counter+=1;;
 		i) inspect_transaction=$OPTARG; let parameter_counter+=1;;
 		a) inspect_address=$OPTARG; let parameter_counter+=1;;
+        l) latest_transactions=$OPTARG; let parameter_counter+=1;;
 		h) helpPanel;;
 	esac
 done
@@ -294,5 +311,7 @@ else
 		inspectTransaction $inspect_transaction
 	elif [ "$(echo $exploration_mode)" == "address" ]; then
 		inspectAddress $inspect_address
+    elif [ "$(echo $exploration_mode)" == "latest_transactions" ]; then
+        latestTransactions $latest_transactions
 	fi
 fi
